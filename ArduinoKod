@@ -1,0 +1,65 @@
+// ===================== PIN TANIMLARI =====================
+const int RELAY_PIN  = 3;   // Röle sinyal pini
+const int BUTTON_PIN = 2;   // Buton pini (GND'ye bağlanır)
+
+// ===================== DEĞİŞKENLER =======================
+bool relayState       = false;
+bool lastButtonState  = HIGH;
+bool buttonState      = HIGH;
+unsigned long lastDebounceTime = 0;
+const unsigned long debounceDelay = 50; // ms
+
+void setup() {
+  Serial.begin(9600);
+
+  pinMode(RELAY_PIN, OUTPUT);
+  pinMode(BUTTON_PIN, INPUT_PULLUP);  // Dahili pull-up, harici direnç gerekmez
+
+  digitalWrite(RELAY_PIN, LOW);       // Başlangıçta röle kapalı
+  Serial.println("HAZIR");
+}
+
+void loop() {
+  // ================= BUTON OKUMA (DEBOUNCE) =================
+  int reading = digitalRead(BUTTON_PIN);
+
+  if (reading != lastButtonState) {
+    lastDebounceTime = millis();
+  }
+
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    if (reading != buttonState) {
+      buttonState = reading;
+
+      if (buttonState == LOW) {       // Butona basıldı (GND)
+        relayState = !relayState;     // TOGGLE
+        digitalWrite(RELAY_PIN, relayState ? HIGH : LOW);
+        Serial.print("BUTON:");
+        Serial.println(relayState ? "ON" : "OFF");
+      }
+    }
+  }
+  lastButtonState = reading;
+
+  // ================= SERIAL KOMUT OKUMA =====================
+  if (Serial.available() > 0) {
+    String cmd = Serial.readStringUntil('\n');
+    cmd.trim();
+    cmd.toUpperCase();
+
+    if (cmd == "ON") {
+      relayState = true;
+      digitalWrite(RELAY_PIN, HIGH);
+      Serial.println("OK:ON");
+    }
+    else if (cmd == "OFF") {
+      relayState = false;
+      digitalWrite(RELAY_PIN, LOW);
+      Serial.println("OK:OFF");
+    }
+    else if (cmd == "STATUS") {
+      Serial.print("STATUS:");
+      Serial.println(relayState ? "ON" : "OFF");
+    }
+  }
+}
